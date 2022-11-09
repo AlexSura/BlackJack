@@ -1,57 +1,54 @@
+# frozen_string_literal: true
+
 require_relative 'deck'
 require_relative 'prompt'
 require_relative 'hand'
 
 class Player
-
   ################### player move options ######################
-  HIT = %w(h hit) 
-  STAND = %w(st stand)
-  DOUBLE_DOWN = ["dd", "double down"]
-  SPLIT = %w(sp split)
+  HIT = %w[h hit].freeze
+  STAND = %w[st stand].freeze
+  DOUBLE_DOWN = ['dd', 'double down'].freeze
+  SPLIT = %w[sp split].freeze
 
   # ваши параметры по умолчанию
   OPTIONS = HIT | STAND
 
   # некоторые строковые константы
   SEP = "\n| "
-  ASK_DEFAULT = "Какое действие выполнить?"  + SEP+
-      "stand: enter 'st' or 'stand'"  + SEP+
-      "hit: enter 'h' or 'hit'" 
-  ASK_DOUBLE_DOWN = "для удвоения ставки введите 'dd' или 'double down'"  
+  ASK_DEFAULT = "Какое действие выполнить?#{SEP}stand: enter 'st' or 'stand'#{SEP}hit: enter 'h' or 'hit'"
+  ASK_DOUBLE_DOWN = "для удвоения ставки введите 'dd' или 'double down'"
   ASK_SPLIT = "split: введите 'sp' or 'split'"
-  WRONG_INPUT = "Я не могу распознать ваш ввод. Попробуйте еще раз: "
+  WRONG_INPUT = 'Я не могу распознать ваш ввод. Попробуйте еще раз: '
 
   ################ accessors + initializer ###################
 
-  attr_accessor :id     # player идентификатор
-  attr_accessor :cash   # сколько у тебя наличных?
-  attr_accessor :hands  # массив рук. У тебя обычно одна рука
-                        # => но вы можете иметь второй, если вы разделитесь
+  attr_accessor :id, :cash, :hands # player идентификатор   # сколько у тебя наличных?  # массив рук. У тебя обычно одна рука
+  # => но вы можете иметь второй, если вы разделитесь
   attr_accessor :current_hand_index # для печати
 
   # инициализируем игрока номером и суммой денег
   def initialize(id, cash)
     self.id = id
     self.cash = cash
-    self.reset_cards
+    reset_cards
   end
 
   ##################### вопросы ######################
 
-  # составить имя игрока. 
+  # составить имя игрока.
   def name?
-    "Player " + self.id.to_s
+    "Player #{id}"
   end
 
   # у игрока закончились деньги?
   def out?
-    self.cash <= 0
+    cash <= 0
   end
 
   # игрок дилер?
   def is_dealer?
-    self.id == DEALER_ID
+    id == DEALER_ID
   end
 
   ##################### ход игрока ######################
@@ -59,27 +56,27 @@ class Player
   def take_turn(game)
     clear_console
 
-    self.hands.each do |hand|
+    hands.each do |hand|
       # повернуть счетчик за руку
       turn = 0
       self.current_hand_index += 1
-      while not hand.finished_playing
+      until hand.finished_playing
         # print the state
         clear_console
-        print "Player " + self.id.to_s + "'s turn.\n"
-        game.print_state_of_game(
-          bet = true, dealer_only_first_card = true, show_val = false)
+        print "Player #{id}'s turn.\n"
+        game.print_state_of_game
+        # (bet = true, dealer_only_first_card = true, show_val = false)
 
         if hand.is_blackjack?
-          puts "Blackjack!"
+          puts 'Blackjack!'
           hand.end_play!
           wait_for_newline
-        else 
+        else
           # запросить ввод
-          process_options game, hand, first_turn = (turn == 0)
+          process_options game, hand, first_turn = turn.zero?
         end
 
-        turn += 1 #увеличить счетчик оборотов
+        turn += 1 # увеличить счетчик оборотов
       end
     end
 
@@ -87,13 +84,13 @@ class Player
   end
 
   # спрашивает игрока, что он/она хотел бы сделать с рукой
-  def process_options(game, hand, first_turn = false)
+  def process_options(game, hand, _first_turn = false)
     valid_options = OPTIONS
     ask_string = ASK_DEFAULT
 
-    # если у игрока две карты, мы должны добавить удвоение ставки 
+    # если у игрока две карты, мы должны добавить удвоение ставки
     # и, возможно, разделить, если применимо к valid_options
-    if hand.cards.length == 2 and hand.bet <= self.cash
+    if (hand.cards.length == 2) && (hand.bet <= cash)
       valid_options |= DOUBLE_DOWN
       ask_string += SEP + ASK_DOUBLE_DOWN
 
@@ -104,65 +101,63 @@ class Player
       end
     end
 
-    ask_string += "\nType your option: "
+    ask_string += "\n Введите свой вариант: "
 
     # ask for input
     option = prompt ask_string
 
     # продолжайте спрашивать, пока мы не получим действительный ввод
-    while not valid_options.include? option
-        option = prompt WRONG_INPUT
-    end
+    option = prompt WRONG_INPUT until valid_options.include? option
 
     # анализировать параметры на основе того, находятся ли они в наборе
     case option
     when *HIT
-      self.hit(game, hand)
+      hit(game, hand)
     when *STAND
-      self.stand(game, hand)
+      stand(game, hand)
     when *SPLIT
-      self.split(game, hand)
+      split(game, hand)
     else # double down
-      self.double_down(game, hand) 
+      double_down(game, hand)
     end
   end
 
   ################# Player choices on a hand ################
 
   def hit(game, hand)
-    self.draw game.deck, hand, silent = false
-    self.check_busted hand
+    draw game.deck, hand, silent = false
+    check_busted hand
   end
 
-  def stand(game, hand)
-    puts "Вы решили встать."
+  def stand(_game, hand)
+    puts 'Вы решили встать.'
     hand.end_play!
     wait_for_newline
   end
 
   def double_down(game, hand)
-    puts "Вы выбрали двойную ставку!"
+    puts 'Вы выбрали двойную ставку!'
 
-    if self.cash >= hand.bet
+    if cash >= hand.bet
       self.cash -= hand.bet
       hand.double_bet!
 
       # now, draw again
-      self.draw game.deck, hand, silent = false
-      self.check_busted hand
+      draw game.deck, hand, silent = false
+      check_busted hand
       hand.end_play!
     else
-      puts "недостаточно средств"
+      puts 'недостаточно средств'
     end
   end
 
-  def split(game, hand)
-    puts "Ты выбрал сплит!"
+  def split(_game, hand)
+    puts 'Ты выбрал сплит!'
     if self.cash >= hand.bet
-      self.hands << hand.split!
+      hands << hand.split!
       self.cash -= hand.bet
     else
-      puts "недостаточно средств"
+      puts 'недостаточно средств'
     end
   end
 
@@ -171,29 +166,30 @@ class Player
   # Zапрашиваем у игрока начальную ставку на руку[0]
   def make_initial_bet
     clear_console
-    puts("Player " + self.id.to_s + " у вас сейчас есть $" + self.cash.to_s)
+    puts("Player #{id} у вас сейчас есть $#{self.cash}")
 
     # сделать ставку
-    bet =  
-      prompt("Player " + self.id.to_s + " сделать ставку!\n Введите число: $").to_i
-    while bet <= 0 or bet > self.cash
+    bet =
+      prompt("Player #{id} сделать ставку!\n Введите число: $").to_i
+    while (bet <= 0) || (bet > self.cash)
       bet = prompt(
-        "Вы можете делать ставки от $1 до $" + self.cash.to_s + ": ").to_i
+        "Вы можете делать ставки от $1 до $#{self.cash}: "
+      ).to_i
     end
 
     # настроить ставку
-    self.hands[0].bet = bet
+    hands[0].bet = bet
     self.cash -= bet
   end
 
   # you can win your bet on a hand
   def win_bet(hand)
     # если у вас блэкджек, выиграйте 3:2 и верните первоначальную ставку
-    if hand.is_blackjack?
-      self.cash += hand.bet + (1.5*hand.bet).round
-    else
-      self.cash += 2*hand.bet
-    end
+    self.cash += if hand.is_blackjack?
+                   hand.bet + (1.5 * hand.bet).round
+                 else
+                   2 * hand.bet
+                 end
   end
 
   # вернуть вашу ставку, если у вас ничья с дилером
@@ -203,8 +199,8 @@ class Player
 
   # проиграть ставку (ставка переходит к дилеру)
   def lose_bet(hand)
-    #hand.bet = 0
-  end 
+    # hand.bet = 0
+  end
 
   ################# Misc. Utility functions ################
   def reset_cards
@@ -214,43 +210,40 @@ class Player
 
   # взять карту из колоды в руку
   # =>  по умолчанию рука — это первая рука
-  def draw(deck, hand = self.hands[0], silent = true)
-    card = deck.draw 
-    hand.cards << card 
-    if !silent
-      print card.to_string + " drawn. "
+  def draw(deck, hand = hands[0], silent = true)
+    card = deck.draw
+    hand.cards << card
+    unless silent
+      print "#{card.to_string} drawn. "
       wait_for_newline
     end
   end
 
   # проверить, не сломана ли рука
-  def check_busted (hand)
+  def check_busted(hand)
     if hand.is_busted?
-      puts "проиграл!"      
-      self.lose_bet(hand)
+      puts 'проиграл!'
+      lose_bet(hand)
       hand.end_play!
       wait_for_newline
     end
   end
 
   # строковое представление игрока
-  def to_string(show_bet=true, only_first_card = false, value = false)
-    sep = " | "
+  def to_string(show_bet = true, only_first_card = false, value = false)
+    sep = ' | '
 
     # print name and cash
-    result = "| " + self.name? + sep 
-    result += "$" + self.cash.to_s + "\n"
+    result = "| #{name?}#{sep}"
+    result += "$#{self.cash}\n"
 
     # print each hand
     hands.each_index do |h|
       hand = hands[h]
-      result += " \\ " + hand.to_string(show_bet, only_first_card, value)
-      if h == self.current_hand_index
-        result += " <- current"
-      end
+      result += " \\ #{hand.to_string(show_bet, only_first_card, value)}"
+      result += ' <- current' if h == self.current_hand_index
       result += "\n"
     end
-    return result
+    result
   end
-
 end

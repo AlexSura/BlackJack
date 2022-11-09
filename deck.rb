@@ -1,20 +1,22 @@
+# frozen_string_literal: true
+
 require_relative 'card'
 
 class Deck
-  attr_accessor :cards
-  
+  attr_reader :cards
+
   # initialize путем создания и перетасовки колоды
   def initialize
-    self.cards = []
+    cards = []
     (0..51).each { |i| cards << Card.new(i) }
-    self.cards.shuffle! 
+    cards.shuffle!
   end
 
   def draw
-    self.cards.pop
+    cards.pop
   end
 
   def has_cards?
-    !self.cards.empty?
+    !cards.empty?
   end
 end

@@ -1,5 +1,5 @@
+# frozen_string_literal: true
 
 require_relative 'game'
 
-# initialize a new game!
 Game.new
